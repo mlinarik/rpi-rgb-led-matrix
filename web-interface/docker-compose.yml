@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  led-web-interface:
+    build: .
+    container_name: led-matrix-web
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - /data/gifs:/data/gifs:ro  # Mount your GIFs directory (read-only)
+      - /dev:/dev                 # Access to device files for GPIO
+    privileged: true              # Required for GPIO access
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - led-network
+    command: gunicorn --bind 0.0.0.0:5000 --workers 1 --timeout 0 app:app
+
+networks:
+  led-network:
+    driver: bridge

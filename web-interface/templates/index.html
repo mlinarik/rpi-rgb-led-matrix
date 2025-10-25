@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LED Matrix Controller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-left: 4px solid #667eea;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .status-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .status-value {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 8px;
+        }
+
+        .status-running {
+            background: #28a745;
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+        }
+
+        .status-stopped {
+            background: #dc3545;
+        }
+
+        .control-section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 2px;
+            margin-right: 10px;
+        }
+
+        .gif-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .gif-item {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .gif-item:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        }
+
+        .gif-item.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .gif-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            word-break: break-word;
+        }
+
+        .gif-size {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .brightness-control {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .brightness-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .brightness-value {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 1.1rem;
+        }
+
+        .brightness-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e9ecef;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        .brightness-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .brightness-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-primary:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .no-gifs {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 40px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 2px dashed #dee2e6;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .gif-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 LED Matrix Controller</h1>
+            <p>Control your RGB LED matrix display remotely</p>
+        </div>
+
+        <div class="status-panel">
+            <div class="status-row">
+                <span class="status-label">Status:</span>
+                <span class="status-value">
+                    <span id="status-text">Loading...</span>
+                    <span id="status-indicator" class="status-indicator"></span>
+                </span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">Current GIF:</span>
+                <span class="status-value" id="current-gif">None</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">Matrix Size:</span>
+                <span class="status-value" id="matrix-size">64x64</span>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3 class="section-title">Select GIF</h3>
+            <div id="gif-grid" class="gif-grid">
+                <div class="no-gifs">Loading GIF files...</div>
+            </div>
+        </div>
+
+        <div class="control-section">
+            <h3 class="section-title">Brightness</h3>
+            <div class="brightness-control">
+                <div class="brightness-label">
+                    <span>Brightness Level</span>
+                    <span class="brightness-value"><span id="brightness-value">100</span>%</span>
+                </div>
+                <input type="range" id="brightness-slider" class="brightness-slider" 
+                       min="1" max="100" value="100" step="1">
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button id="start-btn" class="btn btn-primary" disabled>
+                <span class="btn-text">Start Display</span>
+                <span class="loading" style="display: none;"></span>
+            </button>
+            <button id="stop-btn" class="btn btn-danger">Stop Display</button>
+        </div>
+
+        <div id="message" class="message"></div>
+    </div>
+
+    <script>
+        class LEDController {
+            constructor() {
+                this.selectedGif = null;
+                this.currentStatus = null;
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.loadStatus();
+                this.loadGifs();
+                
+                // Auto-refresh status every 5 seconds
+                setInterval(() => this.loadStatus(), 5000);
+            }
+
+            setupEventListeners() {
+                const startBtn = document.getElementById('start-btn');
+                const stopBtn = document.getElementById('stop-btn');
+                const brightnessSlider = document.getElementById('brightness-slider');
+
+                startBtn.addEventListener('click', () => this.startDisplay());
+                stopBtn.addEventListener('click', () => this.stopDisplay());
+                
+                brightnessSlider.addEventListener('input', (e) => {
+                    document.getElementById('brightness-value').textContent = e.target.value;
+                });
+                
+                brightnessSlider.addEventListener('change', (e) => {
+                    this.updateBrightness(parseInt(e.target.value));
+                });
+            }
+
+            async loadStatus() {
+                try {
+                    const response = await fetch('/api/status');
+                    const status = await response.json();
+                    this.updateStatusDisplay(status);
+                    this.currentStatus = status;
+                } catch (error) {
+                    console.error('Error loading status:', error);
+                    this.showMessage('Error loading status', 'error');
+                }
+            }
+
+            async loadGifs() {
+                try {
+                    const response = await fetch('/api/gifs');
+                    const gifs = await response.json();
+                    this.displayGifs(gifs);
+                } catch (error) {
+                    console.error('Error loading GIFs:', error);
+                    document.getElementById('gif-grid').innerHTML = 
+                        '<div class="no-gifs">Error loading GIF files</div>';
+                }
+            }
+
+            updateStatusDisplay(status) {
+                const statusText = document.getElementById('status-text');
+                const statusIndicator = document.getElementById('status-indicator');
+                const currentGif = document.getElementById('current-gif');
+                const matrixSize = document.getElementById('matrix-size');
+                const brightnessSlider = document.getElementById('brightness-slider');
+                const brightnessValue = document.getElementById('brightness-value');
+
+                if (status.running) {
+                    statusText.textContent = 'Running';
+                    statusIndicator.className = 'status-indicator status-running';
+                } else {
+                    statusText.textContent = 'Stopped';
+                    statusIndicator.className = 'status-indicator status-stopped';
+                }
+
+                currentGif.textContent = status.current_gif || 'None';
+                matrixSize.textContent = `${status.led_cols}x${status.led_rows}`;
+                
+                if (brightnessSlider.value !== status.brightness.toString()) {
+                    brightnessSlider.value = status.brightness;
+                    brightnessValue.textContent = status.brightness;
+                }
+            }
+
+            displayGifs(gifs) {
+                const gifGrid = document.getElementById('gif-grid');
+                
+                if (gifs.length === 0) {
+                    gifGrid.innerHTML = '<div class="no-gifs">No GIF files found in /data/gifs</div>';
+                    return;
+                }
+
+                gifGrid.innerHTML = gifs.map(gif => `
+                    <div class="gif-item" data-gif="${gif.name}">
+                        <div class="gif-name">${gif.name}</div>
+                        <div class="gif-size">${gif.size}</div>
+                    </div>
+                `).join('');
+
+                // Add click handlers
+                document.querySelectorAll('.gif-item').forEach(item => {
+                    item.addEventListener('click', () => this.selectGif(item));
+                });
+                
+                // Select current gif if any
+                if (this.currentStatus && this.currentStatus.current_gif) {
+                    const currentItem = document.querySelector(`[data-gif="${this.currentStatus.current_gif}"]`);
+                    if (currentItem) {
+                        this.selectGif(currentItem);
+                    }
+                }
+            }
+
+            selectGif(item) {
+                // Remove previous selection
+                document.querySelectorAll('.gif-item').forEach(el => {
+                    el.classList.remove('selected');
+                });
+                
+                // Select new item
+                item.classList.add('selected');
+                this.selectedGif = item.dataset.gif;
+                
+                // Enable start button
+                document.getElementById('start-btn').disabled = false;
+            }
+
+            async startDisplay() {
+                if (!this.selectedGif) {
+                    this.showMessage('Please select a GIF first', 'error');
+                    return;
+                }
+
+                const startBtn = document.getElementById('start-btn');
+                const btnText = startBtn.querySelector('.btn-text');
+                const loading = startBtn.querySelector('.loading');
+                
+                // Show loading state
+                startBtn.disabled = true;
+                btnText.textContent = 'Starting...';
+                loading.style.display = 'inline-block';
+
+                try {
+                    const brightness = parseInt(document.getElementById('brightness-slider').value);
+                    const response = await fetch('/api/start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            gif: this.selectedGif,
+                            brightness: brightness
+                        })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        this.showMessage(result.message, 'success');
+                        setTimeout(() => this.loadStatus(), 1000);
+                    } else {
+                        this.showMessage(result.error || 'Failed to start display', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error starting display:', error);
+                    this.showMessage('Error starting display', 'error');
+                } finally {
+                    // Reset button state
+                    btnText.textContent = 'Start Display';
+                    loading.style.display = 'none';
+                    startBtn.disabled = false;
+                }
+            }
+
+            async stopDisplay() {
+                const stopBtn = document.getElementById('stop-btn');
+                stopBtn.disabled = true;
+                stopBtn.textContent = 'Stopping...';
+
+                try {
+                    const response = await fetch('/api/stop', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        this.showMessage(result.message, 'success');
+                        setTimeout(() => this.loadStatus(), 1000);
+                    } else {
+                        this.showMessage(result.error || 'Failed to stop display', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error stopping display:', error);
+                    this.showMessage('Error stopping display', 'error');
+                } finally {
+                    stopBtn.disabled = false;
+                    stopBtn.textContent = 'Stop Display';
+                }
+            }
+
+            async updateBrightness(brightness) {
+                try {
+                    const response = await fetch('/api/brightness', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ brightness: brightness })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        setTimeout(() => this.loadStatus(), 500);
+                    } else {
+                        this.showMessage(result.error || 'Failed to update brightness', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error updating brightness:', error);
+                    this.showMessage('Error updating brightness', 'error');
+                }
+            }
+
+            showMessage(text, type) {
+                const messageEl = document.getElementById('message');
+                messageEl.textContent = text;
+                messageEl.className = `message ${type}`;
+                messageEl.style.display = 'block';
+                
+                setTimeout(() => {
+                    messageEl.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Initialize the controller when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new LEDController();
+        });
+    </script>
+</body>
+</html>
